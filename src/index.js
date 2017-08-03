@@ -1,10 +1,10 @@
 /**
  * computed 实现机制
- * 1. computed 初次求值（被 get）时，将全局变量 Dep.target 标记为自身
+ * 1. computed 初次求值（被 get）时，将全局变量 Dep 标记为自身
  * 2. 在该 getter 中使用 computed 函数计算 value
  * 3. computed 函数中包含了对各 reactive 的引用
- * 4. 在该 computed 中对 reactive 求值（触发 getter）时，各 reactive 收集当前 Dep.target 至自身的 deps 数组。computed 求值完成后，所有它所依赖的 reactive 均完成对该 computed 的依赖收集
- * 6. 求值完成后，computed 将 Dep.target 标记为空，返回求值结果作为 computed 的值
+ * 4. 在该 computed 中对 reactive 求值（触发 getter）时，各 reactive 收集当前 Dep 至自身的 deps 数组。computed 求值完成后，所有它所依赖的 reactive 均完成对该 computed 的依赖收集
+ * 6. 求值完成后，computed 将 Dep 标记为空，返回求值结果作为 computed 的值
  * 7. 下次 reactive 更新时，所有依赖它的 computed 在该 reactive 的 setter 中一并更新
  */
 
@@ -12,9 +12,7 @@
 // 由 computed 的 getter 触发时设入该值
 // 在 computed 求值期间，computed 依赖的 reactive 通过该值收集该 computed 至其依赖中
 // 当 computed 求值完成后再将此值置空
-const Dep = {
-  target: null
-}
+let Dep = null
 
 // 通过设置 getter 与 setter 定义 computed
 // computeFn 为通过 reactive 求值出 computed 的求值函数
@@ -32,13 +30,13 @@ function defineComputed (obj, key, computeFn, updateCallback) {
   Object.defineProperty(obj, key, {
     get () {
       // 标记当前依赖，供 reactive 收集
-      Dep.target = onDependencyUpdated
+      Dep = onDependencyUpdated
       // 在 computeFn 中对 reactive 求值时
       // 由 reactive 的 setter 收集当前 computed 依赖
       // 故完成对 computed 的初次求值时，即完成了 reactive 的依赖收集
       const value = computeFn()
       // 完成求值后，清空标记
-      Dep.target = null
+      Dep = null
       // 最终返回的 getter 结果
       return value
     },
@@ -55,7 +53,7 @@ function defineReactive (obj, key, val) {
   Object.defineProperty(obj, key, {
     // 为 reactive 求值时，收集其依赖
     get () {
-      if (Dep.target) deps.push(Dep.target)
+      if (Dep) deps.push(Dep)
       // 返回 val 值作为 getter 求值结果
       return val
     },
@@ -64,24 +62,19 @@ function defineReactive (obj, key, val) {
       // 在 setter 中更新值
       val = newValue
       // 更新值后触发所有 computed 依赖更新
-      deps.forEach((changeFn) => {
-        changeFn()
-      })
+      deps.forEach(changeFn => changeFn())
     }
   })
 }
 
-const person = {}
-
-defineComputed(
-  person,
-  'status',
-  () => person.age >= 18 ? 'adult' : 'child',
-  (newValue) => console.log('Status is', person.status)
+const elder = {}
+defineReactive(elder, 'now', null)
+defineComputed(elder, 'age', () => elder.now - 1926,
+  () => console.log('Now his age is', elder.age)
 )
 
-defineReactive(person, 'age', 22)
+elder.now = 2016
+console.log(elder.age)
 
-person.age = 10
-console.log(person.status)
-person.age = 30
+elder.now = 2017
+console.log(elder.age)
