@@ -46,7 +46,7 @@ function defineComputed (obj, key, computeFn, updateCallback) {
 }
 
 // 通过 getter 与 setter 定义出一个 reactive
-function defineReactive (obj, key, val) {
+function defineReactive (obj, key, val = null) {
   // 在此标记哪些 computed 依赖了该 reactive
   const deps = []
 
@@ -68,8 +68,10 @@ function defineReactive (obj, key, val) {
 }
 
 const elder = {}
-defineReactive(elder, 'now', null)
-defineComputed(elder, 'age', () => elder.now - 1926,
+defineReactive(elder, 'now')
+
+defineComputed(elder, 'age',
+  () => elder.now - 1926,
   () => console.log('Now his age is', elder.age)
 )
 
