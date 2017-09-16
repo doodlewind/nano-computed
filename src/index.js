@@ -17,7 +17,7 @@ let Dep = null
 // 通过设置 getter 与 setter 定义 computed
 // computeFn 为通过 reactive 求值出 computed 的求值函数
 // updateCallback 为 computed 更新时触发的回调
-function defineComputed (obj, key, computeFn, updateCallback) {
+function defineComputed (obj, key, computeFn, updateCallback = () => {}) {
   // 封装供 reactive 收集的更新回调
   // 用于触发 computed 的更新事件
   const onDependencyUpdated = function () {
@@ -53,7 +53,10 @@ function defineReactive (obj, key, val = null) {
   Object.defineProperty(obj, key, {
     // 为 reactive 求值时，收集其依赖
     get () {
-      if (Dep) deps.push(Dep)
+      // 对依赖去重，防止重复求值
+      if (Dep && !deps.some(dep => Dep === dep)) {
+        deps.push(Dep)
+      }
       // 返回 val 值作为 getter 求值结果
       return val
     },
@@ -67,16 +70,36 @@ function defineReactive (obj, key, val = null) {
   })
 }
 
-const elder = {}
-defineReactive(elder, 'now')
+const data = {}
+defineReactive(data, 'todos')
 
-defineComputed(elder, 'age',
-  () => elder.now - 1926,
-  () => console.log('Now his age is', elder.age)
+defineComputed(data, 'doneCount',
+  () => data.todos.filter(todo => todo.done).length,
+  () => console.log('new done count is ' + data.doneCount)
 )
 
-elder.now = 2016
-console.log(elder.age)
+data.todos = [
+  { text: '123', done: false },
+  { text: '456', done: false },
+  { text: '789', done: false }
+]
+// 初始化
+console.log(data.doneCount)
 
-elder.now = 2017
-console.log(elder.age)
+data.todos = [
+  { text: '123', done: true },
+  { text: '456', done: false },
+  { text: '789', done: false }
+]
+
+data.todos = [
+  { text: '123', done: true },
+  { text: '456', done: true },
+  { text: '789', done: false }
+]
+
+data.todos = [
+  { text: '123', done: true },
+  { text: '456', done: true },
+  { text: '789', done: true }
+]
